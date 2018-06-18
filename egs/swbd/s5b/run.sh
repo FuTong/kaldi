@@ -11,12 +11,25 @@ exit 1;
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e # exit on error
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
 mfccdir=mfcc
+
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
 
 
 # Prepare Switchboard data. This command can also take a second optional argument
@@ -54,6 +67,7 @@ local/swbd1_train_lms.sh data/local/train/text \
   data/local/dict/lexicon.txt data/local/lm $fisher_dirs
 # We don't really need all these options for SRILM, since the LM training script
 # does some of the same processings (e.g. -subset -tolower)
+
 for order in 3 4; do
   lm_suffix="tg"
   [ $order -eq 3 ] || lm_suffix="fg"
@@ -66,7 +80,6 @@ for order in 3 4; do
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_$lm_suffix
   
   # For some funny reason we are still using IRSTLM for doing LM pruning :)
-  export PATH=$PATH:../../../tools/irstlm/bin/
   prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o${order}g.kn.gz /dev/stdout \
     | gzip -c > data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz || exit 1
   LM=data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz
@@ -114,20 +127,20 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 # then take 10k random utterances from those (about 4hr 40mins)
 
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
-local/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
+utils/data/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
 utils/subset_data_dir.sh data/train_100kshort_nodup 10000 data/train_10k_nodup
 
 # Take the first 30k utterances (about 1/8th of the data)
 utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_30k
-local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup  # 33hr
+utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup  # 33hr
 
 # Take the first 100k utterances (just under half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 
 # Finally, the full training set:
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \

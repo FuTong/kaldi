@@ -51,18 +51,8 @@ void TestMakeLinearAcceptor() {
   assert(vec_nozeros == vec2);
   assert(vec_nozeros == vec3);
 
-  if (vec2.size() != 0 || vec3.size() != 0) { // This test might not work 
+  if (vec2.size() != 0 || vec3.size() != 0) { // This test might not work
     // for empty sequences...
-    {
-      vector<vector<I> > vecs2;
-      vector<vector<I> > vecs3;
-      vector<Weight> ws;
-      GetLinearSymbolSequences(vfst, &vecs2, &vecs3, &ws);
-      assert(vecs2.size() == 1);
-      assert(vecs2[0] == vec2);
-      assert(vecs3[0] == vec3);
-      assert(ApproxEqual(ws[0], w));
-    }
     {
       vector<VectorFst<Arc> > fstvec;
       NbestAsFsts(vfst, 1, &fstvec);
@@ -70,7 +60,7 @@ void TestMakeLinearAcceptor() {
       assert(RandEquivalent(vfst, fstvec[0], 2/*paths*/, 0.01/*delta*/,
                             kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     }
-  }  
+  }
   bool include_eps = (kaldi::Rand() % 2 == 0);
   if (!include_eps) vec = vec_nozeros;
   kaldi::SortAndUniq(&vec);
@@ -103,6 +93,9 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   int n_syms = 2 + kaldi::Rand() % 5, n_states = 3 + kaldi::Rand() % 10, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%3;  // Up to 2 unique symbols.
   cout << "Testing pre-determinize with "<<n_syms<<" symbols, "<<n_states<<" states and "<<n_arcs<<" arcs and "<<n_final<<" final states.\n";
   SymbolTable *sptr = new SymbolTable("my-symbol-table");
+  sptr->AddSymbol("<eps>");
+  delete sptr;
+  sptr = new SymbolTable("my-symbol-table");
 
   vector<Label> all_syms;  // including epsilon.
   // Put symbols in the symbol table from 1..n_syms-1.
@@ -143,11 +136,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
   std::cout <<" printing before trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -155,11 +144,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
   std::cout <<" printing after trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -218,7 +203,7 @@ template<class Arc>  void TestAcceptorMinimize() {
   RemoveWeights(fst);
 
   VectorFst<Arc> fst2(*fst);
-  AcceptorMinimize(&fst2);
+  internal::AcceptorMinimize(&fst2);
 
   assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
@@ -332,15 +317,14 @@ template<class Arc>  void TestMakeLoopFst() {
       *fst2 = MakeLoopFstCompare(fsts);
 
   assert(fst1->Properties(kOLabelSorted, kOLabelSorted) != 0);
-      
+
   assert(RandEquivalent(*fst1, *fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   delete fst1;
   delete fst2;
   std::sort(fsts.begin(), fsts.end());
   fsts.erase(std::unique(fsts.begin(), fsts.end()), fsts.end());
   for (int i = 0; i < (int)fsts.size(); i++)
-    if (fsts[i] != NULL)
-      delete fsts[i];
+    delete fsts[i];
 }
 
 
@@ -374,11 +358,7 @@ void TestEqualAlign() {
 
 template<class Arc> void Print(const Fst<Arc> &fst, std::string message) {
   std::cout << message << "\n";
-#ifdef HAVE_OPENFST_GE_10400
   FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true, "\t");
-#else
-  FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true);
-#endif
   fstprinter.Print(&std::cout, "standard output");
 }
 
@@ -449,5 +429,3 @@ int main() {
     fst::TestRemoveUselessArcs<fst::StdArc>();
   }
 }
-
-

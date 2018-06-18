@@ -60,7 +60,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute mfccs.
-  plp.Compute(v, 1.0, &m, NULL);
+  plp.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -71,7 +71,7 @@ static void UnitTestSimple() {
 static void UnitTestHTKCompare1() {
   std::cout << "=== UnitTestHTKCompare1() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -102,7 +102,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  plp.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  plp.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;

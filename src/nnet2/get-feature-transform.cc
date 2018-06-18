@@ -46,7 +46,9 @@ void FeatureTransformEstimate::EstimateInternal(
     TpMatrix<BaseFloat> *C) {
   
   int32 target_dim = opts.dim, dim = total_covar.NumRows();
-  KALDI_ASSERT(target_dim > 0);
+  // Interpret zero or negative target_dim as the full dim
+  if (target_dim <= 0)
+    target_dim = dim;
   // between-class covar is of most rank C-1
   KALDI_ASSERT(target_dim <= dim);
   
@@ -109,7 +111,8 @@ void FeatureTransformEstimate::EstimateInternal(
     Vector<BaseFloat> s(min_dim);
     M->Svd(&s, &U, &Vt); // decompose m = U diag(s) Vt.
     BaseFloat max_s = s.Max();
-    int32 n = s.ApplyCeiling(opts.max_singular_value);
+    int32 n;
+    s.ApplyCeiling(opts.max_singular_value, &n);
     if (n > 0) {
       KALDI_LOG << "Applied ceiling to " << n << " out of " << s.Dim()
                 << " singular values of transform using ceiling "

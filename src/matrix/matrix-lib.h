@@ -22,7 +22,6 @@
 #ifndef KALDI_MATRIX_MATRIX_LIB_H_
 #define KALDI_MATRIX_MATRIX_LIB_H_
 
-#include "matrix/cblas-wrappers.h"
 #include "base/kaldi-common.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
@@ -31,6 +30,7 @@
 #include "matrix/matrix-functions.h"
 #include "matrix/srfft.h"
 #include "matrix/compressed-matrix.h"
+#include "matrix/sparse-matrix.h"
 #include "matrix/optimization.h"
 
 #endif

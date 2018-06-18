@@ -15,7 +15,11 @@ echo "$0 $@"
 . parse_options.sh || exit 1;
 
 if [ $# -ne 2 ]; then
+  echo "This script truncates the long audio into smaller overlapping segments"
+  echo ""
   echo "Usage: $0 [options] <input-dir> <output-dir>"
+  echo " e.g.: $0 data/train_si284_long data/train_si284_split"
+  echo ""
   echo "Options:"
   echo "    --min-seg-length        # minimal segment length"
   echo "    --seg-length            # length of segments in seconds."
@@ -105,7 +109,7 @@ cat $output_dir/wav.scp | perl -e '
     @col == 2 || die "Error: bad line $_\n";
     $utt2spk{$col[0]} = $col[1];
   }
-  foreach $seg (keys %seg2wav) {
+  foreach $seg (sort keys %seg2wav) {
     $index = 0;
     $step = $slen - $olen;
     print UMAP "$seg";

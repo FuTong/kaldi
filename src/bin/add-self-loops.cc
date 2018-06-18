@@ -46,9 +46,9 @@ int main(int argc, char *argv[]) {
         "is recommended as the decoding will in that case be faster.\n"
         "Usage:   add-self-loops [options] transition-gmm/acoustic-model [fst-in] [fst-out]\n"
         "e.g.: \n"
-        " add-self-loops --self-loop-scale=0.1 1.mdl HCLGa.fst HCLG.fst\n" 
+        " add-self-loops --self-loop-scale=0.1 1.mdl HCLGa.fst HCLG.fst\n"
         "or:  add-self-loops --self-loop-scale=0.1 1.mdl <HCLGa.fst >HCLG.fst\n";
-    
+
     BaseFloat self_loop_scale = 1.0;
     bool reorder = true;
     std::string disambig_in_filename;
@@ -72,7 +72,12 @@ int main(int argc, char *argv[]) {
     if (fst_in_filename == "-") fst_in_filename = "";
     std::string fst_out_filename = po.GetOptArg(3);
     if (fst_out_filename == "-") fst_out_filename = "";
-
+#if _MSC_VER
+    if (fst_in_filename == "")
+      _setmode(_fileno(stdin),  _O_BINARY);
+    if (fst_out_filename == "")
+      _setmode(_fileno(stdout),  _O_BINARY);
+#endif
 
     std::vector<int32> disambig_syms_in;
     if (disambig_in_filename != "") {
@@ -92,13 +97,13 @@ int main(int argc, char *argv[]) {
     if (!fst)
       KALDI_ERR << "add-self-loops: error reading input FST.";
 
+    bool check_no_self_loops = true;
 
     // The work gets done here.
     AddSelfLoops(trans_model,
                  disambig_syms_in,
                  self_loop_scale,
-                 reorder,
-                 fst);
+                 reorder, check_no_self_loops, fst);
 
     if (! fst->Write(fst_out_filename) )
       KALDI_ERR << "add-self-loops: error writing FST to "
@@ -112,4 +117,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

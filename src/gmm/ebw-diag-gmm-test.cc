@@ -20,7 +20,7 @@
 
 
 #include "gmm/diag-gmm.h"
-#include "gmm/ebw-diag-gmm.h" 
+#include "gmm/ebw-diag-gmm.h"
 #include "util/kaldi-io.h"
 
 
@@ -28,9 +28,9 @@ namespace kaldi {
 
 
 void UnitTestEstimateMmieDiagGmm() {
-  size_t dim = 15;  // dimension of the gmm
+  size_t dim = RandInt(5, 10);  // dimension of the gmm
   size_t nMix = 2;  // number of mixtures in the data
-  size_t maxiterations = 20;  // number of iterations for estimation
+  size_t maxiterations = RandInt(2, 5);  // number of iterations for estimation
 
   // maximum number of densities in the GMM
   // larger than the number of mixtures in the data
@@ -43,12 +43,12 @@ void UnitTestEstimateMmieDiagGmm() {
   for (size_t m = 0; m < nMix; m++) {
     for (size_t d= 0; d < dim; d++) {
       means_f(m, d) = kaldi::RandGauss()*100.0F;
-      vars_f(m, d) = exp(kaldi::RandGauss())*1000.0F+ 1.0F;
+      vars_f(m, d) = Exp(kaldi::RandGauss())*1000.0F+ 1.0F;
     }
     // std::cout << "Gauss " << m << ": Mean = " << means_f.Row(m) << '\n'
     //          << "Vars = " << vars_f.Row(m) << '\n';
   }
-   
+
   // Numerator stats
   // second, generate 1000 feature vectors for each of the mixture components
   size_t counter_num = 0, multiple = 200;
@@ -96,7 +96,7 @@ void UnitTestEstimateMmieDiagGmm() {
   // write the feature vectors to a file
   std::ofstream of("tmpfeats");
   of.precision(10);
-  of << feats_num; 
+  of << feats_num;
   of.close();
 
   // now generate randomly initial values for the GMM
@@ -104,7 +104,7 @@ void UnitTestEstimateMmieDiagGmm() {
   Matrix<BaseFloat> means(1, dim), vars(1, dim), invvars(1, dim);
   for (size_t d= 0; d < dim; d++) {
     means(0, d) = kaldi::RandGauss()*100.0F;
-    vars(0, d) = exp(kaldi::RandGauss()) *10.0F + 1e-5F;
+    vars(0, d) = Exp(kaldi::RandGauss()) *10.0F + 1e-5F;
   }
   weights(0) = 1.0F;
   invvars.CopyFromMat(vars);
@@ -126,12 +126,12 @@ void UnitTestEstimateMmieDiagGmm() {
       + ((r/2)%2 == 0 ? kGmmVariances : 0)
       + ((r/4)%2 == 0 ? kGmmWeights : 0);
   double tau = (r/8)%2 == 0 ? 100 : 0.0;
-  
+
   if ((flags & kGmmVariances) && !(flags & kGmmMeans)) {
     delete gmm;
     return; // Don't do this case: not supported in the update equations.
   }
-  
+
   AccumDiagGmm num;
   AccumDiagGmm den;
 
@@ -139,7 +139,7 @@ void UnitTestEstimateMmieDiagGmm() {
   num.SetZero(flags);
   den.Resize(gmm->NumGauss(), gmm->Dim(), flags);
   den.SetZero(flags);
-    
+
   size_t iteration = 0;
   double last_log_like_diff;
   while (iteration < maxiterations) {
@@ -149,7 +149,7 @@ void UnitTestEstimateMmieDiagGmm() {
     num.SetZero(flags);
     den.Resize(gmm->NumGauss(), gmm->Dim(), flags);
     den.SetZero(flags);
-  
+
     double loglike_num = 0.0;
     double loglike_den = 0.0;
     for (size_t i = 0; i < counter_num; i++) {
@@ -182,12 +182,12 @@ void UnitTestEstimateMmieDiagGmm() {
                    << GmmFlagsToString(flags) << ", tau = " << tau << " )";
     }
     last_log_like_diff = loglike_diff;
-    
+
     AccumDiagGmm num_smoothed(num);
     IsmoothStatsDiagGmm(num, tau, &num_smoothed); // Apply I-smoothing.
-   
+
     BaseFloat auxf_gauss, auxf_weight, count;
-    std::cout << "MEANX: " << gmm->weights() << '\n'; 
+    std::cout << "MEANX: " << gmm->weights() << '\n';
 
     int32 num_floored;
     UpdateEbwDiagGmm(num_smoothed, den, flags, ebw_opts,
@@ -197,21 +197,21 @@ void UnitTestEstimateMmieDiagGmm() {
       UpdateEbwWeightsDiagGmm(num, den, ebw_weight_opts, gmm, &auxf_weight,
                               &count);
     }
-   
+
     // mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
-    // std::cout << "MEANY: " << mean_hlp << '\n'; 
+    // std::cout << "MEANY: " << mean_hlp << '\n';
     std::cout << "MEANY: " << gmm->weights() << '\n';
 
 
     if ((iteration % 3 == 1) && (gmm->NumGauss() * 2 <= maxcomponents)) {
       gmm->Split(gmm->NumGauss() * 2, 0.001);
-      std::cout << "Ngauss, Ndim: " << gmm->NumGauss() << " " << gmm->Dim() << '\n'; 
+      std::cout << "Ngauss, Ndim: " << gmm->NumGauss() << " " << gmm->Dim() << '\n';
     }
-    
+
     iteration++;
   }
   delete gmm;
-  
+
   unlink("tmpfeats");
 }
 
@@ -219,8 +219,7 @@ void UnitTestEstimateMmieDiagGmm() {
 
 
 int main() {
-  // repeat the test 20 times
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 5; i++) {
     kaldi::UnitTestEstimateMmieDiagGmm();
   }
   std::cout << "Test OK.\n";

@@ -1,7 +1,7 @@
 // bin/compile-train-graphs.cc
 
 // Copyright 2009-2012  Microsoft Corporation
-//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//           2012-2015  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -37,9 +37,11 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Creates training graphs (without transition-probabilities, by default)\n"
         "\n"
-        "Usage:   compile-train-graphs [options] <tree-in> <model-in> <lexicon-fst-in> <transcriptions-rspecifier> <graphs-wspecifier>\n"
+        "Usage:   compile-train-graphs [options] <tree-in> <model-in> "
+        "<lexicon-fst-in> <transcriptions-rspecifier> <graphs-wspecifier>\n"
         "e.g.: \n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra ark:graphs.fsts\n";
+        " compile-train-graphs tree 1.mdl lex.fst "
+        "'ark:sym2int.pl -f 2- words.txt text|' ark:graphs.fsts\n";
     ParseOptions po(usage);
 
     TrainingGraphCompilerOptions gopts;
@@ -73,13 +75,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_rxfilename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-      // AmDiagGmm am_gmm;
-      // am_gmm.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_rxfilename, &trans_model);
 
     // need VectorFst because we will change it by adding subseq symbol.
     VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_rxfilename);

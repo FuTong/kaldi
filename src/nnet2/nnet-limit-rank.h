@@ -22,8 +22,8 @@
 
 #include "nnet2/nnet-nnet.h"
 #include "util/table-types.h"
-#include "thread/kaldi-semaphore.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-semaphore.h"
+#include "util/kaldi-thread.h"
 #include "nnet2/nnet-update.h"
 
 namespace kaldi {
@@ -35,12 +35,12 @@ struct NnetLimitRankOpts {
   
   NnetLimitRankOpts(): num_threads(1), parameter_proportion(0.75) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("num-threads", &num_threads, "Number of threads used for "
-                 "rank-limiting operation; note, will never use more than "
-                 "#layers.");
-    po->Register("parameter-proportion", &parameter_proportion, "Proportion of "
-                 "dimension of each transform to limit the rank to.");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-threads", &num_threads, "Number of threads used for "
+                   "rank-limiting operation; note, will never use more than "
+                   "#layers.");
+    opts->Register("parameter-proportion", &parameter_proportion, "Proportion of "
+                   "dimension of each transform to limit the rank to.");
   }  
 };
 

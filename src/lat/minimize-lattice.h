@@ -40,6 +40,7 @@ namespace fst {
 /// function will not combine as many states as it could, but it won't crash.
 /// Returns true on success, and false if it failed due to topological sorting
 /// failing.
+/// The output will be topologically sorted.
 template<class Weight, class IntType>
 bool MinimizeCompactLattice(
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat,
@@ -49,4 +50,4 @@ bool MinimizeCompactLattice(
 
 }  // namespace fst
 
-#endif  // KALDI_LAT_PUSH_LATTICE_H_
+#endif  // KALDI_LAT_MINIMIZE_LATTICE_H_

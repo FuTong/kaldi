@@ -194,7 +194,7 @@ test_io(const DiagGmm &gmm, const AccumDiagGmm &est_gmm, bool binary,
   }
 
   AssertEqual(loglike1, loglike2, 1.0e-6);
-  
+
   unlink("tmp_stats");
 }
 
@@ -215,7 +215,7 @@ UnitTestEstimateDiagGmm() {
   for (size_t m = 0; m < nMix; m++) {
     for (size_t d= 0; d < dim; d++) {
       means_f(m, d) = kaldi::RandGauss()*100.0F;
-      vars_f(m, d) = exp(kaldi::RandGauss())*1000.0F+ 1.0F;
+      vars_f(m, d) = Exp(kaldi::RandGauss())*1000.0F+ 1.0F;
     }
 //    std::cout << "Gauss " << m << ": Mean = " << means_f.Row(m) << '\n'
 //        << "Vars = " << vars_f.Row(m) << '\n';
@@ -259,7 +259,7 @@ UnitTestEstimateDiagGmm() {
   Matrix<BaseFloat> means(1, dim), vars(1, dim), invvars(1, dim);
   for (size_t d= 0; d < dim; d++) {
     means(0, d) = kaldi::RandGauss()*100.0F;
-    vars(0, d) = exp(kaldi::RandGauss()) *10.0F + 1e-5F;
+    vars(0, d) = Exp(kaldi::RandGauss()) *10.0F + 1e-5F;
   }
   weights(0) = 1.0F;
   invvars.CopyFromMat(vars);
@@ -278,7 +278,7 @@ UnitTestEstimateDiagGmm() {
     DiagGmm rgmm;
     rgmm.Resize(1, dim);
     ngmm.CopyToDiagGmm(&rgmm);
-    
+
     // check contents
     KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
     KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
@@ -329,7 +329,7 @@ UnitTestEstimateDiagGmm() {
       lastloglike = loglike;
       lastloglike_nM = gmm->NumGauss();
     }
-    
+
     // binary write
     est_gmm.Write(Output("tmp_stats", true).Stream(), true);
 
@@ -384,7 +384,7 @@ UnitTestEstimateDiagGmm() {
     for (size_t i = 0; i < counter; i++)
       weights(i) = 0.5 + 0.1 * (Rand() % 10);
 
-    
+
     float loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
       loglike += weights(i) *
@@ -398,9 +398,9 @@ UnitTestEstimateDiagGmm() {
     est_gmm.AssertEqual(est_gmm2);
   }
 
-  
+
   delete gmm;
-  
+
   unlink("tmp_stats");
 }
 
@@ -410,4 +410,3 @@ int main() {
     UnitTestEstimateDiagGmm();
   std::cout << "Test OK.\n";
 }
-

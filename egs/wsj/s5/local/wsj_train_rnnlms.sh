@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
 #           2015  Guoguo Chen
@@ -6,7 +6,7 @@
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,
 # to get the larger-size dictionary including all of CMUdict
-# plus any OOVs and possible acronyms that we could easily 
+# plus any OOVs and possible acronyms that we could easily
 # derive pronunciations for.
 
 # This script takes no command-line arguments but takes the --cmd option.
@@ -14,7 +14,7 @@
 # Begin configuration section.
 rand_seed=0
 cmd=run.pl
-nwords=10000 # This is how many words we're putting in the vocab of the RNNLM. 
+nwords=10000 # This is how many words we're putting in the vocab of the RNNLM.
 hidden=30
 class=200 # Num-classes... should be somewhat larger than sqrt of nwords.
 direct=1000 # Number of weights that are used for "direct" connections, in millions.
@@ -23,6 +23,7 @@ threads=1 # for RNNLM-HS
 bptt=2 # length of BPTT unfolding in RNNLM
 bptt_block=20 # length of BPTT unfolding in RNNLM
 dict_suffix=
+rnnlm_options="-direct-order 4"
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -38,34 +39,8 @@ dir=$1
 srcdir=data/local/dict${dict_suffix}_larger
 mkdir -p $dir
 
+$KALDI_ROOT/tools/extras/check_for_rnnlm.sh "$rnnlm_ver" || exit 1
 export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
-
-
-( # First make sure the kaldi_lm toolkit is installed.
- # Note: this didn't work out of the box for me, I had to
- # change the g++ version to just "g++" (no cross-compilation
- # needed for me as I ran on a machine that had been setup
- # as 64 bit by default.
- cd $KALDI_ROOT/tools || exit 1;
- if [ -f $rnnlm_ver/rnnlm ]; then
-   echo Not installing the rnnlm toolkit since it is already there.
- else
-   if [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
-       extras/install_rnnlm_hs.sh
-   else
-       echo Downloading and installing the rnnlm tools
-       # http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
-       if [ ! -f $rnnlm_ver.tgz ]; then
-	   wget http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz || exit 1;
-       fi
-       mkdir $rnnlm_ver
-       cd $rnnlm_ver
-       tar -xvzf ../$rnnlm_ver.tgz || exit 1;
-       make CC=g++ || exit 1;
-       echo Done making the rnnlm tools
-       fi
-   fi
-) || exit 1;
 
 
 if [ ! -f $srcdir/cleaned.gz -o ! -f $srcdir/lexicon.txt ]; then
@@ -77,7 +52,7 @@ fi
 cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.all
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
-echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)" 
+echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)"
 gunzip -c $srcdir/cleaned.gz | awk -v w=$dir/wordlist.all \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
   {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "<UNK> ";print ""}'|sed 's/ $//g' \
@@ -101,6 +76,8 @@ gunzip -c $dir/all.gz | tail -n +$heldout_sent | \
 # automatically gets added inside the rnnlm program.
 # Note: by concatenating with $dir/wordlist.all, we are doing add-one
 # smoothing of the counts.
+
+export TMPDIR=$dir # to avoid filling up /tmp/
 
 cat $dir/train.in $dir/wordlist.all | grep -v '</s>' | grep -v '<s>' | \
   awk '{ for(x=1;x<=NF;x++) count[$x]++; } END{for(w in count){print count[w], w;}}' | \
@@ -136,21 +113,31 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 #  -hidden 100 -rand-seed 1 -debug 2 -class 100 -bptt 2 -bptt-block 20 \
 #  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
-$cmd $dir/rnnlm.log \
-   $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
-   -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
-   -direct-order 4 -direct $direct -binary || exit 1;
-
+# since the mikolov rnnlm and faster-rnnlm have slightly different interfaces...
+if [ "$rnnlm_ver" == "faster-rnnlm" ]; then
+  $cmd $dir/rnnlm.log \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -bptt $bptt -bptt-block $bptt_block \
+     $rnnlm_options -direct $direct || exit 1;
+else
+  $cmd $dir/rnnlm.log \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -independent -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
+     $rnnlm_options -direct $direct -binary || exit 1;
+fi
 
 # make it like a Kaldi table format, with fake utterance-ids.
 cat $dir/valid.in | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
 
-utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids \
+utils/rnnlm_compute_scores.sh --ensure_normalized_probs true --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids \
   $dir/valid.scores
-nw=`wc -w < $dir/valid.with_ids` # Note: valid.with_ids includes utterance-ids which
+
+nw=`cat $dir/valid.with_ids | awk '{a+=NF}END{print a}'` # Note: valid.with_ids includes utterance-ids which
   # is one per word, to account for the </s> at the end of each sentence; this is the
   # correct number to normalize buy.
-p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
+  # we have noticed that "wc -w" might give wrong results for certain languages
+
+p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores`
 echo Perplexity is $p | tee $dir/perplexity.log
 
 rm $dir/train $dir/all.gz

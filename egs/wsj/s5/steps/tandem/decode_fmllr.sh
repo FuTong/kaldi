@@ -8,7 +8,7 @@
 
 # There are 3 models involved potentially in this script,
 # and for a standard, speaker-independent system they will all be the same.
-# The "alignment model" is for the 1st-pass decoding and to get the 
+# The "alignment model" is for the 1st-pass decoding and to get the
 # Gaussian-level alignments for the "adaptation model" the first time we
 # do fMLLR.  The "adaptation model" is used to estimate fMLLR transforms
 # and to generate state-level lattices.  The lattices are then rescored
@@ -17,7 +17,7 @@
 # The following table explains where we get these 3 models from.
 # Note: $srcdir is one level up from the decoding directory.
 #
-#   Model              Default source:                 
+#   Model              Default source:
 #
 #  "alignment model"   $srcdir/final.alimdl              --alignment-model <model>
 #                     (or $srcdir/final.mdl if alimdl absent)
@@ -32,7 +32,7 @@ alignment_model=
 adapt_model=
 final_model=
 stage=0
-acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in 
+acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in
               # lattice generation.
 max_active=7000
 beam=13.0
@@ -42,6 +42,7 @@ silence_weight=0.01
 cmd=run.pl
 si_dir=
 fmllr_update_type=full
+skip_scoring=false
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -130,11 +131,11 @@ normft2=`cat $srcdir/normft2 2>/dev/null`
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -149,7 +150,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -185,7 +186,7 @@ fi
 pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata1/JOB/utt2spk ark:$dir/pre_trans.JOB ark:- ark:- |"
 
 ## Do the main lattice generation pass.  Note: we don't determinize the lattices at
-## this stage, as we're going to use them in acoustic rescoring with the larger 
+## this stage, as we're going to use them in acoustic rescoring with the larger
 ## model, and it's more correct to store the full state-level lattice for this purpose.
 if [ $stage -le 2 ]; then
   echo "$0: doing main lattice generation phase"
@@ -221,7 +222,7 @@ feats="$sifeats transform-feats --utt2spk=ark:$sdata1/JOB/utt2spk ark:$dir/trans
 # Rescore the state-level lattices with the final adapted features, and the final model
 # (which by default is $srcdir/final.mdl, but which may be specified on the command line,
 # useful in case of discriminatively trained systems).
-# At this point we prune and determinize the lattices and write them out, ready for 
+# At this point we prune and determinize the lattices and write them out, ready for
 # language model rescoring.
 
 if [ $stage -le 4 ]; then
@@ -232,9 +233,12 @@ if [ $stage -le 4 ]; then
     "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;
 fi
 
-[ ! -x local/score.sh ] && \
-  echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data1 $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data1 $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 rm $dir/{trans_tmp,pre_trans}.*
 

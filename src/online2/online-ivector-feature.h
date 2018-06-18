@@ -106,51 +106,51 @@ struct OnlineIvectorExtractionConfig {
                                    greedy_ivector_extractor(false),
                                    max_remembered_frames(1000) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("lda-matrix", &lda_mat_rxfilename, "Filename of LDA matrix, "
-                 "e.g. final.mat; used for iVector extraction. ");
-    po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
-                 "(Extended) filename for global CMVN stats, used in iVector "
-                 "extraction, obtained for example from "
-                 "'matrix-sum scp:data/train/cmvn.scp -', only used for "
-                 "iVector extraction");
-    po->Register("cmvn-config", &cmvn_config_rxfilename, "Configuration "
-                 "file for online CMVN features (e.g. conf/online_cmvn.conf),"
-                 "only used for iVector extraction.  Contains options "
-                 "as for the program 'apply-cmvn-online'");
-    po->Register("splice-config", &splice_config_rxfilename, "Configuration file "
-                 "for frame splicing (--left-context and --right-context "
-                 "options); used for iVector extraction.");
-    po->Register("diag-ubm", &diag_ubm_rxfilename, "Filename of diagonal UBM "
-                 "used to obtain posteriors for iVector extraction, e.g. "
-                 "final.dubm");
-    po->Register("ivector-extractor", &ivector_extractor_rxfilename,
-                 "Filename of iVector extractor, e.g. final.ie");
-    po->Register("ivector-period", &ivector_period, "Frequency with which "
-                 "we extract iVectors for neural network adaptation");
-    po->Register("num-gselect", &num_gselect, "Number of Gaussians to select "
-                 "for iVector extraction");
-    po->Register("min-post", &min_post, "Threshold for posterior pruning in "
-                 "iVector extraction");
-    po->Register("posterior-scale", &posterior_scale, "Scale for posteriors in "
-                 "iVector extraction (may be viewed as inverse of prior scale)");
-    po->Register("max-count", &max_count, "Maximum data count we allow before "
-                 "we start scaling the stats down (if nonzero)... helps to make "
-                 "iVectors from long utterances look more typical.  Interpret "
-                 "as a frame-count times --posterior-scale, typically 1/10 of "
-                 "a number of frames.  Suggest 100.");
-    po->Register("use-most-recent-ivector", &use_most_recent_ivector, "If true, "
-                 "always use most recent available iVector, rather than the "
-                 "one for the designated frame.");
-    po->Register("greedy-ivector-extractor", &greedy_ivector_extractor, "If "
-                 "true, 'read ahead' as many frames as we currently have available "
-                 "when extracting the iVector.  May improve iVector quality.");
-    po->Register("max-remembered-frames", &max_remembered_frames, "The maximum "
-                 "number of frames of adaptation history that we carry through "
-                 "to later utterances of the same speaker (having a finite "
-                 "number allows the speaker adaptation state to change over "
-                 "time).  Interpret as a real frame count, i.e. not a count "
-                 "scaled by --posterior-scale.");
+  void Register(OptionsItf *opts) {
+    opts->Register("lda-matrix", &lda_mat_rxfilename, "Filename of LDA matrix, "
+                   "e.g. final.mat; used for iVector extraction. ");
+    opts->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
+                   "(Extended) filename for global CMVN stats, used in iVector "
+                   "extraction, obtained for example from "
+                   "'matrix-sum scp:data/train/cmvn.scp -', only used for "
+                   "iVector extraction");
+    opts->Register("cmvn-config", &cmvn_config_rxfilename, "Configuration "
+                   "file for online CMVN features (e.g. conf/online_cmvn.conf),"
+                   "only used for iVector extraction.  Contains options "
+                   "as for the program 'apply-cmvn-online'");
+    opts->Register("splice-config", &splice_config_rxfilename, "Configuration file "
+                   "for frame splicing (--left-context and --right-context "
+                   "options); used for iVector extraction.");
+    opts->Register("diag-ubm", &diag_ubm_rxfilename, "Filename of diagonal UBM "
+                   "used to obtain posteriors for iVector extraction, e.g. "
+                   "final.dubm");
+    opts->Register("ivector-extractor", &ivector_extractor_rxfilename,
+                   "Filename of iVector extractor, e.g. final.ie");
+    opts->Register("ivector-period", &ivector_period, "Frequency with which "
+                   "we extract iVectors for neural network adaptation");
+    opts->Register("num-gselect", &num_gselect, "Number of Gaussians to select "
+                   "for iVector extraction");
+    opts->Register("min-post", &min_post, "Threshold for posterior pruning in "
+                   "iVector extraction");
+    opts->Register("posterior-scale", &posterior_scale, "Scale for posteriors in "
+                   "iVector extraction (may be viewed as inverse of prior scale)");
+    opts->Register("max-count", &max_count, "Maximum data count we allow before "
+                   "we start scaling the stats down (if nonzero)... helps to make "
+                   "iVectors from long utterances look more typical.  Interpret "
+                   "as a frame-count times --posterior-scale, typically 1/10 of "
+                   "a number of frames.  Suggest 100.");
+    opts->Register("use-most-recent-ivector", &use_most_recent_ivector, "If true, "
+                   "always use most recent available iVector, rather than the "
+                   "one for the designated frame.");
+    opts->Register("greedy-ivector-extractor", &greedy_ivector_extractor, "If "
+                   "true, 'read ahead' as many frames as we currently have available "
+                   "when extracting the iVector.  May improve iVector quality.");
+    opts->Register("max-remembered-frames", &max_remembered_frames, "The maximum "
+                   "number of frames of adaptation history that we carry through "
+                   "to later utterances of the same speaker (having a finite "
+                   "number allows the speaker adaptation state to change over "
+                   "time).  Interpret as a real frame count, i.e. not a count "
+                   "scaled by --posterior-scale.");
   }
 };
 
@@ -266,6 +266,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const;
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
+  virtual BaseFloat FrameShiftInSeconds() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous
@@ -410,24 +411,24 @@ struct OnlineSilenceWeightingConfig {
   OnlineSilenceWeightingConfig():
       silence_weight(1.0), max_state_duration(-1) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("silence-phones", &silence_phones_str, "(RE weighting in "
-                 "iVector estimation for online decoding) List of integer ids of "
-                 "silence phones, separated by colons (or commas).  Data that "
-                 "(according to the traceback of the decoder) corresponds to "
-                 "these phones will be downweighted by --silence-weight.");
-    po->Register("silence-weight", &silence_weight, "(RE weighting in "
-                 "iVector estimation for online decoding) Weighting factor for frames "
-                 "that the decoder trace-back identifies as silence; only "
-                 "relevant if the --silence-phones option is set.");
-    po->Register("max-state-duration", &max_state_duration, "(RE weighting in "
-                 "iVector estimation for online decoding) Maximum allowed "
-                 "duration of a single transition-id; runs with durations longer "
-                 "than this will be weighted down to the silence-weight.");
+  void Register(OptionsItf *opts) {
+    opts->Register("silence-phones", &silence_phones_str, "(RE weighting in "
+                   "iVector estimation for online decoding) List of integer ids of "
+                   "silence phones, separated by colons (or commas).  Data that "
+                   "(according to the traceback of the decoder) corresponds to "
+                   "these phones will be downweighted by --silence-weight.");
+    opts->Register("silence-weight", &silence_weight, "(RE weighting in "
+                   "iVector estimation for online decoding) Weighting factor for frames "
+                   "that the decoder trace-back identifies as silence; only "
+                   "relevant if the --silence-phones option is set.");
+    opts->Register("max-state-duration", &max_state_duration, "(RE weighting in "
+                   "iVector estimation for online decoding) Maximum allowed "
+                   "duration of a single transition-id; runs with durations longer "
+                   "than this will be weighted down to the silence-weight.");
   }
   // e.g. prefix = "ivector-silence-weighting"
-  void RegisterWithPrefix(std::string prefix, OptionsItf *po) {
-    ParseOptions po_prefix(prefix, po);
+  void RegisterWithPrefix(std::string prefix, OptionsItf *opts) {
+    ParseOptions po_prefix(prefix, opts);
     this->Register(&po_prefix);
   }
 };
@@ -441,8 +442,14 @@ class OnlineSilenceWeighting {
  public:
   // Note: you would initialize a new copy of this object for each new
   // utterance.
+  // The frame-subsampling-factor is used for newer nnet3 models, especially
+  // chain models, when the frame-rate of the decoder is different from the
+  // frame-rate of the input features.  E.g. you might set it to 3 for such
+  // models.
+
   OnlineSilenceWeighting(const TransitionModel &trans_model,
-                         const OnlineSilenceWeightingConfig &config);
+                         const OnlineSilenceWeightingConfig &config,
+			 int32 frame_subsampling_factor = 1);
   
   bool Active() const { return config_.Active(); }
 
@@ -455,7 +462,7 @@ class OnlineSilenceWeighting {
   // the stats... the output format is (frame-index, delta-weight).  The
   // num_frames_ready argument is the number of frames available at the input
   // (or equivalently, output) of the online iVector extractor class, which may
-  // be more than the currently availabl decoder traceback.  How many frames
+  // be more than the currently available decoder traceback.  How many frames
   // of weights it outputs depends on how much "num_frames_ready" increased
   // since last time we called this function, and whether the decoder traceback
   // changed.  Negative delta_weights might occur if frames previously
@@ -465,17 +472,19 @@ class OnlineSilenceWeighting {
   // this output to class OnlineIvectorFeature by calling its function
   // UpdateFrameWeights with the output.
   void GetDeltaWeights(
-      int32 num_frames_ready,
+      int32 num_frames_ready_in,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
   
  private:
   const TransitionModel &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
   
+  int32 frame_subsampling_factor_;
+
   unordered_set<int32> silence_phones_;
   
   struct FrameInfo {
-    //The only reason we need the token pointer is to know far back we have to
+    // The only reason we need the token pointer is to know far back we have to
     // trace before the traceback is the same as what we previously traced back.
     void *token;
     int32 transition_id;
@@ -493,6 +502,11 @@ class OnlineSilenceWeighting {
   // max_state_duration is relevant.
   int32 GetBeginFrame();
 
+  // This contains information about any previously computed traceback;
+  // when the traceback changes we use this variable to compare it with the
+  // previous traceback.
+  // It's indexed at the frame-rate of the decoder (may be different
+  // by 'frame_subsampling_factor_' from the frame-rate of the features.
   std::vector<FrameInfo> frame_info_;
 
   // This records how many frames have been output and that currently reflect
@@ -510,5 +524,5 @@ class OnlineSilenceWeighting {
 /// @} End of "addtogroup onlinefeat"
 }  // namespace kaldi
 
-#endif  // KALDI_ONLINE2_ONLINE_NNET2_FEATURE_PIPELINE_H_
+#endif  // KALDI_ONLINE2_ONLINE_IVECTOR_FEATURE_H_
 

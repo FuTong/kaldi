@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,7 +69,7 @@ void LatticeFasterDecoder::InitDecoding() {
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
-  ProcessNonemitting(config_.beam);
+  ProcessNonemittingWrapper(config_.beam);
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -84,8 +85,8 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);
+    ProcessNonemittingWrapper(cost_cutoff);
   }
   FinalizeDecoding();
 
@@ -145,12 +146,12 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
     TopSortTokens(active_toks_[f].toks, &token_list);
     for (size_t i = 0; i < token_list.size(); i++)
       if (token_list[i] != NULL)
-        tok_map[token_list[i]] = ofst->AddState();    
+        tok_map[token_list[i]] = ofst->AddState();
   }
   // The next statement sets the start state of the output FST.  Because we
   // topologically sorted the tokens, state zero must be the start-state.
   ofst->SetStart(0);
-  
+
   KALDI_VLOG(4) << "init:" << num_toks_/2 + 3 << " buckets:"
                 << tok_map.bucket_count() << " load:" << tok_map.load_factor()
                 << " max:" << tok_map.max_load_factor();
@@ -223,6 +224,32 @@ void LatticeFasterDecoder::PossiblyResizeHash(size_t num_toks) {
     toks_.SetSize(new_sz);
   }
 }
+
+/*
+  A note on the definition of extra_cost.
+
+  extra_cost is used in pruning tokens, to save memory.
+
+  Define the 'forward cost' of a token as zero for any token on the frame
+  we're currently decoding; and for other frames, as the shortest-path cost
+  between that token and a token on the frame we're currently decoding.
+  (by "currently decoding" I mean the most recently processed frame).
+
+  Then define the extra_cost of a token (always >= 0) as the forward-cost of
+  the token minus the smallest forward-cost of any token on the same frame.
+
+  We can use the extra_cost to accurately prune away tokens that we know will
+  never appear in the lattice.  If the extra_cost is greater than the desired
+  lattice beam, the token would provably never appear in the lattice, so we can
+  prune away the token.
+
+  The advantage of storing the extra_cost rather than the forward-cost, is that
+  it is less costly to keep the extra_cost up-to-date when we process new frames.
+  When we process a new frame, *all* the previous frames' forward-costs would change;
+  but in general the extra_cost will change only for a finite number of frames.
+  (Actually we don't update all the extra_costs every time we update a frame; we
+  only do it every 'config_.prune_interval' frames).
+ */
 
 // FindOrAddToken either locates a token in hash of toks_,
 // or if necessary inserts a new, empty token (i.e. with no forward links)
@@ -352,7 +379,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
 
   if (active_toks_[frame_plus_one].toks == NULL)  // empty list; should not happen.
     KALDI_WARN << "No tokens alive at end of file";
-  
+
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;
   ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
   decoding_finalized_ = true;
@@ -562,8 +589,8 @@ void LatticeFasterDecoder::AdvanceDecoding(DecodableInterface *decodable,
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);
+    ProcessNonemittingWrapper(cost_cutoff);
   }
 }
 
@@ -623,7 +650,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
 
     KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded()
                   << " is " << tmp_array_.size();
-    
+
     if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
       std::nth_element(tmp_array_.begin(),
                        tmp_array_.begin() + config_.max_active,
@@ -634,7 +661,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
       if (adaptive_beam)
         *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
       return max_active_cutoff;
-    }     
+    }
     if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
       if (config_.min_active == 0) min_active_cutoff = best_weight;
       else {
@@ -645,7 +672,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
                          tmp_array_.end());
         min_active_cutoff = tmp_array_[config_.min_active];
       }
-    }    
+    }
     if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
       if (adaptive_beam)
         *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
@@ -657,6 +684,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
   }
 }
 
+template <typename FstType>
 BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
@@ -673,7 +701,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   BaseFloat cur_cutoff = GetCutoff(final_toks, &tok_cnt, &adaptive_beam, &best_elem);
   KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
                 << adaptive_beam;
-  
+
   PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
 
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
@@ -681,6 +709,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
   // dynamic range.
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -689,15 +718,13 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
+      const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        arc.weight = Times(arc.weight,
-                           Weight(cost_offset -
-                                  decodable->LogLikelihood(frame, arc.ilabel)));
-        BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+        BaseFloat new_weight = arc.weight.Value() + cost_offset - 
+            decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
@@ -718,7 +745,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
     StateId state = e->key;
     Token *tok = e->val;
     if (tok->tot_cost <= cur_cutoff) {
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+      for (fst::ArcIterator<FstType> aiter(fst, state);
            !aiter.Done();
            aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -749,19 +776,38 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   return next_cutoff;
 }
 
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(
+        DecodableInterface *decodable);
+
+BaseFloat LatticeFasterDecoder::ProcessEmittingWrapper(DecodableInterface *decodable) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<Arc>>(decodable);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<Arc>>(decodable);
+  } else {
+    return LatticeFasterDecoder::ProcessEmitting<fst::Fst<Arc>>(decodable);
+  }
+}
+
+template <typename FstType> 
 void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
   // it may cause us to process states unnecessarily (e.g. more than once),
   // but in the baseline code, turning this vector into a set to fix this
   // problem did not improve overall speed.
-  
+
   KALDI_ASSERT(queue_.empty());
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
     queue_.push_back(e->key);
@@ -771,7 +817,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
       warned_ = true;
     }
   }
-  
+
   while (!queue_.empty()) {
     StateId state = queue_.back();
     queue_.pop_back();
@@ -786,7 +832,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
     // but since most states are emitting it's not a huge issue.
     tok->DeleteForwardLinks(); // necessary when re-visiting
     tok->links = NULL;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
@@ -811,6 +857,22 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
+template void LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(
+        BaseFloat cutoff);
+
+void LatticeFasterDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
+  } else {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::Fst<Arc>>(cost_cutoff);
+  }
+}
 
 void LatticeFasterDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {

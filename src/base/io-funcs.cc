@@ -120,9 +120,13 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
 }
 
 void CheckToken(const char *token) {
-  KALDI_ASSERT(*token != '\0');  // check it's nonempty.
+  if (*token == '\0')
+    KALDI_ERR << "Token is empty (not a valid token)";
+  const char *orig_token = token;
   while (*token != '\0') {
-    KALDI_ASSERT(!::isspace(*token));
+    if (::isspace(*token))
+      KALDI_ERR << "Token is not a valid token (contains space): '"
+                << orig_token << "'";
     token++;
   }
 }
@@ -157,7 +161,7 @@ void ReadToken(std::istream &is, bool binary, std::string *str) {
   }
   if (!isspace(is.peek())) {
     KALDI_ERR << "ReadToken, expected space after token, saw instead "
-              << static_cast<char>(is.peek())
+              << CharToString(static_cast<char>(is.peek()))
               << ", at file position " << is.tellg();
   }
   is.get();  // consume the space.
@@ -174,8 +178,14 @@ int PeekToken(std::istream &is, bool binary) {
   }
   int ans = is.peek();
   if (read_bracket) {
-    if (!is.unget())
+    if (!is.unget()) {
       KALDI_WARN << "Error ungetting '<' in PeekToken";
+      // Clear the bad bit.  It seems to be possible for this code to be
+      // reached, and the C++ standard is very vague on whether even a single
+      // call to unget() should succeed; see
+      // http://www.cplusplus.com/reference/istream/istream/unget/
+      is.clear();
+    }
   }
   return ans;
 }
@@ -193,7 +203,12 @@ void ExpectToken(std::istream &is, bool binary, const char *token) {
     KALDI_ERR << "Failed to read token [started at file position "
               << pos_at_start << "], expected " << token;
   }
-  if (strcmp(str.c_str(), token) != 0) {
+  // The second half of the '&&' expression below is so that if we're expecting
+  // "<Foo>", we will accept "Foo>" instead.  This is so that the model-reading
+  // code will tolerate errors in PeekToken where is.unget() failed; search for
+  // is.clear() in PeekToken() for an explanation.
+  if (strcmp(str.c_str(), token) != 0 &&
+      !(token[0] == '<' && strcmp(str.c_str(), token + 1) == 0)) {
     KALDI_ERR << "Expected token \"" << token << "\", got instead \""
               << str <<"\".";
   }

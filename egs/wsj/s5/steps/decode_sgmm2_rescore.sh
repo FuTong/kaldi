@@ -26,8 +26,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -ne 4 ]; then
-  echo "Usage: steps/decode_sgmm_rescore.sh [options] <graph-dir|lang-dir> <data-dir> <old-decode-dir> <decode-dir>"
-  echo " e.g.: steps/decode_sgmm_rescore.sh --transform-dir exp/tri3b/decode_dev93_tgpr \\"
+  echo "Usage: steps/decode_sgmm2_rescore.sh [options] <graph-dir|lang-dir> <data-dir> <old-decode-dir> <decode-dir>"
+  echo " e.g.: steps/decode_sgmm2_rescore.sh --transform-dir exp/tri3b/decode_dev93_tgpr \\"
   echo "      exp/sgmm3a/graph_tgpr data/test_dev93 exp/sgmm3a/decode_dev93_tgpr exp/sgmm3a_mmi/decode_dev93_tgpr"
   echo "main options (for others, see top of script file)"
   echo "  --transform-dir <decoding-dir>           # directory of previous decoding"
@@ -103,10 +103,11 @@ $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
   $srcdir/$iter.mdl "ark:gunzip -c $olddir/lat.JOB.gz|" "$feats" \
   "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-if  ! $skip_scoring  ; then
+if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 exit 0;

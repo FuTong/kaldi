@@ -101,7 +101,7 @@ int32 FullGmm::ComputeGconsts() {
 
   for (int32 mix = 0; mix < num_mix; mix++) {
     KALDI_ASSERT(weights_(mix) >= 0);  // Cannot have negative weights.
-    BaseFloat gc = log(weights_(mix)) + offset;  // May be -inf if weights == 0
+    BaseFloat gc = Log(weights_(mix)) + offset;  // May be -inf if weights == 0
     SpMatrix<BaseFloat> covar(inv_covars_[mix]);
     covar.InvertDouble();
     BaseFloat logdet = covar.LogPosDefDet();
@@ -113,7 +113,7 @@ int32 FullGmm::ComputeGconsts() {
     // So gc is the likelihood at zero feature value.
 
     if (KALDI_ISNAN(gc)) {  // negative infinity is OK but NaN is not acceptable
-      KALDI_ERR << "At component" << mix
+      KALDI_ERR << "At component " << mix
                 << ", not a number in gconst computation";
     }
     if (KALDI_ISINF(gc)) {
@@ -449,8 +449,8 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
        removed < num_comp - target_components && !queue.empty(); ) {
     QueueElem qelem = queue.top();
     queue.pop();
-    BaseFloat delta_log_like_old = qelem.first,
-        idx1 = qelem.second.first, idx2 = qelem.second.second;
+    BaseFloat delta_log_like_old = qelem.first;
+    int32 idx1 = qelem.second.first, idx2 = qelem.second.second;
     // the next 3 lines are to handle when components got merged
     // and moved to different indices, but we still want to consider
     // merging their descendants. [descendant = current index where
@@ -687,7 +687,7 @@ BaseFloat FullGmm::GaussianSelectionPreselect(
   }
   Vector<BaseFloat> loglikes(preselect_sz);
   LogLikelihoodsPreselect(data, preselect, &loglikes);
-  
+
   Vector<BaseFloat> loglikes_copy(loglikes);
   BaseFloat *ptr = loglikes_copy.Data();
   std::nth_element(ptr, ptr+preselect_sz-this_num_gselect,

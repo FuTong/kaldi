@@ -655,13 +655,14 @@ BaseFloat ClusterBottomUpCompartmentalized(
     int32 min_clust, std::vector< std::vector<Clusterable*> > *clusters_out,
     std::vector< std::vector<int32> > *assignments_out) {
   KALDI_ASSERT(thresh >= 0.0 && min_clust >= 0);
-  KALDI_ASSERT(min_clust >= points.size());  // Code does not merge compartments.
-  int32 npoints = 0;
+  int32 npoints = 0, num_non_empty_compartments = 0;
   for (vector< vector<Clusterable*> >::const_iterator itr = points.begin(),
            end = points.end(); itr != end; ++itr) {
     KALDI_ASSERT(!ContainsNullPointers(*itr));
     npoints += itr->size();
+    if (itr->size() > 0) num_non_empty_compartments++;
   }
+  KALDI_ASSERT(min_clust >= num_non_empty_compartments);  // Code does not merge compartments.
   // make sure fits in uint_smaller and does not hit the -1 which is reserved.
   KALDI_ASSERT(sizeof(uint_smaller)==sizeof(uint32) ||
                npoints < static_cast<int32>(static_cast<uint_smaller>(-1)));
@@ -1055,12 +1056,12 @@ class TreeClusterer {
 
   ~TreeClusterer() {
     for (int32 leaf = 0; leaf < static_cast<int32>(leaf_nodes_.size());leaf++) {
-      if (leaf_nodes_[leaf]->node_total) delete leaf_nodes_[leaf]->node_total;
+      delete leaf_nodes_[leaf]->node_total;
       DeletePointers(&(leaf_nodes_[leaf]->leaf.clusters));
       delete leaf_nodes_[leaf];
     }
     for (int32 nonleaf = 0; nonleaf < static_cast<int32>(nonleaf_nodes_.size()); nonleaf++) {
-      if (nonleaf_nodes_[nonleaf]->node_total) delete nonleaf_nodes_[nonleaf]->node_total;
+      delete nonleaf_nodes_[nonleaf]->node_total;
       delete nonleaf_nodes_[nonleaf];
     }
   }

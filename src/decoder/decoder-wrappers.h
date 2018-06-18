@@ -38,13 +38,13 @@ struct AlignConfig {
 
   AlignConfig(): beam(200.0), retry_beam(0.0), careful(false) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("beam", &beam, "Decoding beam used in alignment");
-    po->Register("retry-beam", &retry_beam,
-                 "Decoding beam for second try at alignment");
-    po->Register("careful", &careful,
-                 "If true, do 'careful' alignment, which is better at detecting "
-                 "alignment failure (involves loop to start of decoding graph).");
+  void Register(OptionsItf *opts) {
+    opts->Register("beam", &beam, "Decoding beam used in alignment");
+    opts->Register("retry-beam", &retry_beam,
+                   "Decoding beam for second try at alignment");
+    opts->Register("careful", &careful,
+                   "If true, do 'careful' alignment, which is better at detecting "
+                   "alignment failure (involves loop to start of decoding graph).");
   }
 };
 
@@ -69,7 +69,8 @@ void AlignUtteranceWrapper(
     int32 *num_error,
     int32 *num_retried,
     double *tot_like,
-    int64 *frame_count);
+    int64 *frame_count,
+    BaseFloatVectorWriter *per_frame_acwt_writer = NULL);
 
 
 
@@ -111,10 +112,9 @@ bool DecodeUtteranceLatticeFaster(
 
 /// This class basically does the same job as the function
 /// DecodeUtteranceLatticeFaster, but in a way that allows us
-/// to build a multi-threaded command line program more easily,
-/// using code in ../thread/kaldi-task-sequence.h.  The main
-/// computation takes place in operator (), and the output happens
-/// in the destructor.
+/// to build a multi-threaded command line program more easily.
+/// The main computation takes place in operator (), and the output
+/// happens in the destructor.
 class DecodeUtteranceLatticeFasterClass {
  public:
   // Initializer sets various variables.

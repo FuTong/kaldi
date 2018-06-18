@@ -21,21 +21,10 @@
 
 #include "feat/online-feature.h"
 #include "feat/wave-reader.h"
+#include "matrix/kaldi-matrix.h"
 #include "transform/transform-common.h"
 
 namespace kaldi {
-
-
-template<class Real> static void AssertEqual(const Matrix<Real> &A,
-                                             const Matrix<Real> &B,
-                                             float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++)
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol * std::max(1.0,
-        static_cast<double>(std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-}
 
 void GetOutput(OnlineFeatureInterface *a,
                Matrix<BaseFloat> *output) {
@@ -70,6 +59,7 @@ bool RandomSplit(int32 wav_dim,
                  int32 num_pieces,
                  int32 trials = 5) {
   piece_dim->clear();
+  piece_dim->resize(num_pieces, 0);
 
   int32 dim_mean = wav_dim / (num_pieces * 2);
   int32 cnt = 0;
@@ -154,7 +144,7 @@ void TestOnlineSpliceFrames() {
 }
 
 void TestOnlineMfcc() {
-  std::ifstream is("../feat/test_data/test.wav");
+  std::ifstream is("../feat/test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -171,19 +161,23 @@ void TestOnlineMfcc() {
   op.mel_opts.low_freq = 0.0;
   op.htk_compat = false;
   op.use_energy = false;  // C0 not energy.
+  if (RandInt(0, 1) == 0)
+    op.frame_opts.snip_edges = false;
   Mfcc mfcc(op);
 
   // compute mfcc offline
   Matrix<BaseFloat> mfcc_feats;
-  mfcc.Compute(waveform, 1.0, &mfcc_feats, NULL);  // vtln not supported
+  mfcc.Compute(waveform, 1.0, &mfcc_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
   // we try to break it into from 5 pieces to 9(not essential to do so)
   for (int32 num_piece = 5; num_piece < 10; num_piece++) {
     OnlineMfcc online_mfcc(op);
-    std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
+    std::vector<int32> piece_length(num_piece, 0);
+
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
 
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
@@ -202,7 +196,7 @@ void TestOnlineMfcc() {
 }
 
 void TestOnlinePlp() {
-  std::ifstream is("../feat/test_data/test.wav");
+  std::ifstream is("../feat/test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -223,7 +217,7 @@ void TestOnlinePlp() {
 
   // compute plp offline
   Matrix<BaseFloat> plp_feats;
-  plp.Compute(waveform, 1.0, &plp_feats, NULL);  // vtln not supported
+  plp.Compute(waveform, 1.0, &plp_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
@@ -231,7 +225,8 @@ void TestOnlinePlp() {
   for (int32 num_piece = 5; num_piece < 10; num_piece++) {
     OnlinePlp online_plp(op);
     std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
 
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
@@ -250,7 +245,7 @@ void TestOnlinePlp() {
 }
 
 void TestOnlineTransform() {
-  std::ifstream is("../feat/test_data/test.wav");
+  std::ifstream is("../feat/test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -293,7 +288,7 @@ void TestOnlineTransform() {
 }
 
 void TestOnlineAppendFeature() {
-  std::ifstream is("../feat/test_data/test.wav");
+  std::ifstream is("../feat/test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -314,7 +309,7 @@ void TestOnlineAppendFeature() {
 
   // compute mfcc offline
   Matrix<BaseFloat> mfcc_feats;
-  mfcc.Compute(waveform, 1.0, &mfcc_feats, NULL);  // vtln not supported
+  mfcc.Compute(waveform, 1.0, &mfcc_feats);  // vtln not supported
 
   // the parametrization object for 2nd stream plp feature
   PlpOptions plp_op;
@@ -331,7 +326,7 @@ void TestOnlineAppendFeature() {
 
   // compute plp offline
   Matrix<BaseFloat> plp_feats;
-  plp.Compute(waveform, 1.0, &plp_feats, NULL);  // vtln not supported
+  plp.Compute(waveform, 1.0, &plp_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
@@ -342,8 +337,8 @@ void TestOnlineAppendFeature() {
     OnlineAppendFeature online_mfcc_plp(&online_mfcc, &online_plp);
 
     std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
-
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
       Vector<BaseFloat> wave_piece(

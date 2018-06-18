@@ -24,12 +24,14 @@
 // files in this directory.
 
 #include "base/kaldi-common.h"
-#include "matrix/kaldi-blas.h"
 
 namespace kaldi {
+// this enums equal to CblasTrans and CblasNoTrans constants from CBLAS library
+// we are writing them as literals because we don't want to include here matrix/kaldi-blas.h,
+// which puts many symbols into global scope (like "real") via the header f2c.h 
 typedef enum {
-  kTrans    = CblasTrans,
-  kNoTrans = CblasNoTrans
+  kTrans    = 112, // = CblasTrans
+  kNoTrans  = 111  // = CblasNoTrans
 } MatrixTransposeType;
 
 typedef enum {
@@ -37,6 +39,12 @@ typedef enum {
   kUndefined,
   kCopyData
 } MatrixResizeType;
+
+
+typedef enum {
+  kDefaultStride,
+  kStrideEqualNumCols,
+} MatrixStrideType;
 
 typedef enum {
   kTakeLower,
@@ -54,6 +62,7 @@ template<typename Real> class Matrix;
 template<typename Real> class SpMatrix;
 template<typename Real> class TpMatrix;
 template<typename Real> class PackedMatrix;
+template<typename Real> class SparseMatrix;
 
 // these are classes that won't be defined in this
 // directory; they're mostly needed for friend declarations.
@@ -66,8 +75,10 @@ template<typename Real> class CuVector;
 template<typename Real> class CuPackedMatrix;
 template<typename Real> class CuSpMatrix;
 template<typename Real> class CuTpMatrix;
+template<typename Real> class CuSparseMatrix;
 
 class CompressedMatrix;
+class GeneralMatrix;
 
 /// This class provides a way for switching between double and float types.
 template<typename T> class OtherReal { };  // useful in reading+writing routines

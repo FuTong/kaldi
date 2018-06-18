@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-utils.h"
+#include "fstext/kaldi-fst-io.h"
 
 // e.g. of test:
 // echo " 0 0" | fstcompile | fstisstochastic
@@ -66,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     std::string fst_in_filename = po.GetOptArg(1);
 
-    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
+    Fst<StdArc> *fst = ReadFstKaldiGeneric(fst_in_filename);
 
     bool ans;
     StdArc::Weight min, max;

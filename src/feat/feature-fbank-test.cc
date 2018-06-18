@@ -38,7 +38,7 @@ static void UnitTestReadWave() {
   std::cout << "<<<=== Reading waveform\n";
 
   {
-    std::ifstream is("test_data/test.wav");
+    std::ifstream is("test_data/test.wav", std::ios_base::binary);
     WaveData wave;
     wave.Read(is);
     const Matrix<BaseFloat> data(wave.Data());
@@ -101,7 +101,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute fbanks.
-  fbank.Compute(v, 1.0, &m, NULL);
+  fbank.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -112,7 +112,7 @@ static void UnitTestSimple() {
 static void UnitTestHTKCompare1() {
   std::cout << "=== UnitTestHTKCompare1() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -143,7 +143,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, 1.0, &kaldi_features, NULL);
+  fbank.Compute(waveform, 1.0, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -193,7 +193,7 @@ static void UnitTestHTKCompare1() {
 static void UnitTestHTKCompare2() {
   std::cout << "=== UnitTestHTKCompare2() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -224,7 +224,7 @@ static void UnitTestHTKCompare2() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, 1.0, &kaldi_features, NULL);
+  fbank.Compute(waveform, 1.0, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -273,7 +273,7 @@ static void UnitTestHTKCompare2() {
 static void UnitTestHTKCompare3() {
   std::cout << "=== UnitTestHTKCompare3() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -308,7 +308,7 @@ static void UnitTestHTKCompare3() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, vtln_warp, &kaldi_features, NULL);
+  fbank.Compute(waveform, vtln_warp, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -359,7 +359,7 @@ static void UnitTestHTKCompare3() {
 static void UnitTestHTKCompare4() {
   std::cout << "=== UnitTestHTKCompare4() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -394,7 +394,7 @@ static void UnitTestHTKCompare4() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, vtln_warp, &kaldi_features, NULL);
+  fbank.Compute(waveform, vtln_warp, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";

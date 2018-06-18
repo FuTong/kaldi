@@ -131,7 +131,7 @@ static void UnitTestEndEffects(Matrix<BaseFloat> &raw_features, int32 window,
 }
 
 int main() {
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -148,7 +148,7 @@ int main() {
   op.use_energy = false;
   Mfcc mfcc(op);
   Matrix<BaseFloat> raw_features;
-  mfcc.Compute(waveform, 1.0, &raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &raw_features);
 
   try {
     for (int32 window = 1; window < 4; window++) {
@@ -162,6 +162,7 @@ int main() {
     }
     return 0;
   } catch (const std::exception &e) {
+    static_cast<void>(e);
     return 1;
   }
   

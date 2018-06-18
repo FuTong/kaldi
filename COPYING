@@ -20,21 +20,22 @@
  // Copyright    2013   Johns Hopkins University (author: Daniel Povey)
 
  it is because the individual who wrote the code was at that institution as an
- employee, so the copyright is owned by the university (we have checked that the
- contributions were in accordance with the open-source policies of the
+ employee, so the copyright is owned by the university (and we will have checked
+ that the contributions were in accordance with the open-source policies of the
  institutions concerned, including getting them vetted individually where
- necessary).  In some cases, however, particularly early on, we just wrote the
- name of the university or company concerned, without the actual author's name
- in parentheses.  If you see something like
+ necessary).  From a legal point of view the copyright ownership is that of the
+ institution concerned, and the (author: xxx) in parentheses is just
+ informational, to identify the actual person who wrote the code, and is not
+ intended to have any legal implications.  In some cases, however, particularly
+ early on, we just wrote the name of the university or company concerned,
+ without the actual author's name in parentheses.  If you see something like
 
  //  Copyright  2009-2012   Arnab Ghoshal  Microsoft Corporation
 
  it does not imply that Arnab was working for Microsoft, it is because someone
  else contributed to the file while working at Microsoft (this would be Daniel
  Povey, in fact, who was working at Microsoft Research at the outset of the
- project).  If the actual author's name in parentheses, it is just to clarify
- who wrote the code; it is not supposed to signify ownership of the copyright by
- that individual.
+ project).
 
  The list of authors of each file is in an essentially arbitrary order, but is
  often chronological if they contributed in different years.
@@ -55,32 +56,74 @@ contributors and original source material as well as the full text of the Apache
 License v 2.0 are set forth below.
 
 Individual Contributors (in alphabetical order)
-      
-      Mohit Agarwal      
+
+      Mohit Agarwal
+      Tanel Alumae
       Gilles Boulianne
       Lukas Burget
+      Dogan Can
+      Guoguo Chen
+      Gaofeng Cheng
       Cisco Corporation
-      Ondrej Glembek
+      Pavel Denisov
+      Ilya Edrenkin
+      Ewald Enzinger
+      Joachim Fainberg
+      Daniel Galvez
+      Pegah Ghahremani
       Arnab Ghoshal
+      Ondrej Glembek
       Go Vivace Inc.
+      Allen Guo
+      Hossein Hadian
+      Lv Hang
       Mirko Hannemann
+      Hendy Irawan
       Navdeep Jaitly
       Johns Hopkins University
+      Shiyin Kang
+      Kirill Katsnelson
+      Tom Ko
+      Danijel Korzinek
+      Gaurav Kumar
+      Ke Li
+      Matthew Maciejewski
+      Vimal Manohar
       Yajie Miao
       Microsoft Corporation
       Petr Motlicek
+      Xingyu Na
+      Vincent Nguyen
+      Lucas Ondel
       Vassil Panayotov
+      Vijayaditya Peddinti
+      Phonexia s.r.o.
+      Ondrej Platek
+      Daniel Povey
+      Yanmin Qian
       Ariya Rastrow
       Saarland University
-      Petr Schwarz      
-      Georg Stemmer
+      Omid Sadjadi
+      Petr Schwarz
+      Yiwen Shao
+      Nickolay V. Shmyrev
       Jan Silovsky
-      Phonexia s.r.o.
-      Yanmin Qian
-      Lucas Ondel
+      Eduardo Silva
+      Peter Smit
+      David Snyder
+      Alexander Solovets
+      Georg Stemmer
+      Pawel Swietojanski
+      Jan "Yenda" Trmal
+      Albert Vernon
       Karel Vesely
+      Yiming Wang
+      Shinji Watanabe
+      Minhua Wu
       Haihua Xu
-      
+      Hainan Xu
+      Xiaohui Zhang
+
 Other Source Material
 
     This project includes a port and modification of materials from JAMA: A Java
@@ -93,9 +136,9 @@ Other Source Material
   "Signal processing with lapped transforms," Artech House, Inc., 1992.  The
   current copyright holder, Henrique S. Malvar, has given his permission for the
   release of this modified version under the Apache License 2.0.
-  
-  This project includes material from the OpenFST Library v1.2.7 available at 
-  http://www.openfst.org and released under the Apache License v. 2.0.   
+
+  This project includes material from the OpenFST Library v1.2.7 available at
+  http://www.openfst.org and released under the Apache License v. 2.0.
 
   [OpenFst COPYING file begins here]
 
@@ -104,7 +147,7 @@ Other Source Material
     You may obtain a copy of the License at
 
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

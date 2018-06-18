@@ -38,7 +38,7 @@ static void UnitTestReadWave() {
   std::cout << "<<<=== Reading waveform\n";
 
   {
-    std::ifstream is("test_data/test.wav");
+    std::ifstream is("test_data/test.wav", std::ios_base::binary);
     WaveData wave;
     wave.Read(is);
     const Matrix<BaseFloat> data(wave.Data());
@@ -101,7 +101,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute mfccs.
-  mfcc.Compute(v, 1.0, &m, NULL);
+  mfcc.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -112,7 +112,7 @@ static void UnitTestSimple() {
 static void UnitTestHTKCompare1() {
   std::cout << "=== UnitTestHTKCompare1() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -143,7 +143,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -196,7 +196,7 @@ static void UnitTestHTKCompare1() {
 static void UnitTestHTKCompare2() {
   std::cout << "=== UnitTestHTKCompare2() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -227,7 +227,7 @@ static void UnitTestHTKCompare2() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -280,7 +280,7 @@ static void UnitTestHTKCompare2() {
 static void UnitTestHTKCompare3() {
   std::cout << "=== UnitTestHTKCompare3() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -312,7 +312,7 @@ static void UnitTestHTKCompare3() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -365,7 +365,7 @@ static void UnitTestHTKCompare3() {
 static void UnitTestHTKCompare4() {
   std::cout << "=== UnitTestHTKCompare4() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -395,7 +395,7 @@ static void UnitTestHTKCompare4() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -448,7 +448,7 @@ static void UnitTestHTKCompare4() {
 static void UnitTestHTKCompare5() {
   std::cout << "=== UnitTestHTKCompare5() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -483,7 +483,7 @@ static void UnitTestHTKCompare5() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, vtln_warp, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, vtln_warp, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -536,7 +536,7 @@ static void UnitTestHTKCompare6() {
   std::cout << "=== UnitTestHTKCompare6() ===\n";
 
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -568,7 +568,7 @@ static void UnitTestHTKCompare6() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;

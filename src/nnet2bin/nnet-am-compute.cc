@@ -1,6 +1,9 @@
 // nnet2bin/nnet-am-compute.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+//           2015  Johns Hopkins University (author:  Daniel Garcia-Romero)
+//           2015  David Snyder
+//           2017  Karel Vesely
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -38,24 +41,41 @@ int main(int argc, char *argv[]) {
         "--apply-log=true\n"
         "\n"
         "Usage:  nnet-am-compute [options] <model-in> <feature-rspecifier> "
-        "<feature-or-loglikes-wspecifier>\n";
-    
+        "<feature-or-loglikes-wspecifier>\n"
+        "See also: nnet-compute, nnet-logprob\n";
+
+    bool divide_by_priors = false;
     bool apply_log = false;
     bool pad_input = true;
+    std::string use_gpu = "no";
+    int32 chunk_size = 0;
     ParseOptions po(usage);
+    po.Register("divide-by-priors", &divide_by_priors, "If true, "
+                "divide by the priors stored in the model and re-normalize, apply-log may follow");
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
     po.Register("pad-input", &pad_input, "If true, duplicate the first and last frames "
                 "of input features as required for temporal context, to prevent #frames "
                 "of output being less than those of input.");
-    
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
+    po.Register("chunk-size", &chunk_size, "Process the feature matrix in chunks.  "
+                "This is useful when processing large feature files in the GPU.  "
+                "If chunk-size > 0, pad-input must be true.");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+    // If chunk_size is greater than 0, pad_input needs to be true.
+    KALDI_ASSERT(chunk_size < 0 || pad_input);
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
+
     std::string nnet_rxfilename = po.GetArg(1),
         features_rspecifier = po.GetArg(2),
         features_or_loglikes_wspecifier = po.GetArg(3);
@@ -70,14 +90,20 @@ int main(int argc, char *argv[]) {
     }
 
     Nnet &nnet = am_nnet.GetNnet();
-    
+
     int64 num_done = 0, num_frames = 0;
-    SequentialBaseFloatCuMatrixReader feature_reader(features_rspecifier);
-    BaseFloatCuMatrixWriter writer(features_or_loglikes_wspecifier);
-    
+
+    Vector<BaseFloat> inv_priors(am_nnet.Priors());
+    KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
+                 "Priors in neural network not set up.");
+    inv_priors.ApplyPow(-1.0);
+
+    SequentialBaseFloatMatrixReader feature_reader(features_rspecifier);
+    BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
+
     for (; !feature_reader.Done();  feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const CuMatrix<BaseFloat> &feats  = feature_reader.Value();
+      const Matrix<BaseFloat> &feats  = feature_reader.Value();
 
       int32 output_frames = feats.NumRows(), output_dim = nnet.OutputDim();
       if (!pad_input)
@@ -87,8 +113,30 @@ int main(int argc, char *argv[]) {
                    << "would be empty.";
         continue;
       }
-      CuMatrix<BaseFloat> output(output_frames, output_dim);
-      NnetComputation(nnet, feats, pad_input, &output);
+
+      Matrix<BaseFloat> output(output_frames, output_dim);
+      if (chunk_size > 0 && chunk_size < feats.NumRows()) {
+        NnetComputationChunked(nnet, feats, chunk_size, &output);
+      } else {
+        CuMatrix<BaseFloat> cu_feats(feats);
+        CuMatrix<BaseFloat> cu_output(output);
+        NnetComputation(nnet, cu_feats, pad_input, &cu_output);
+        output.CopyFromMat(cu_output);
+      }
+
+      if (divide_by_priors) {
+        output.MulColsVec(inv_priors); // scales each column by the corresponding element
+        // of inv_priors.
+        for (int32 i = 0; i < output.NumRows(); i++) {
+          SubVector<BaseFloat> frame(output, i);
+          BaseFloat p = frame.Sum();
+          if (!(p > 0.0)) {
+            KALDI_WARN << "Bad sum of probabilities " << p;
+          } else {
+            frame.Scale(1.0 / p); // re-normalize to sum to one.
+          }
+        }
+      }
 
       if (apply_log) {
         output.ApplyFloor(1.0e-20);
@@ -98,7 +146,10 @@ int main(int argc, char *argv[]) {
       num_frames += feats.NumRows();
       num_done++;
     }
-    
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
+
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_frames << " frames of input were processed.";
 
